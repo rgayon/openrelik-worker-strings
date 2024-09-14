@@ -42,7 +42,7 @@ def strings(
     input_files: list = None,
     output_path: str = None,
     workflow_id: str = None,
-    user_config: dict = None,
+    task_config: dict = None,
 ) -> str:
     """Extract ASCII strings from files.
 
@@ -51,7 +51,7 @@ def strings(
         input_files: List of input file dictionaries (unused if pipe_result exists).
         output_path: Path to the output directory.
         workflow_id: ID of the workflow.
-        user_config: User configuration for the task (currently unused).
+        task_config: User configuration for the task.
 
     Returns:
         Base64-encoded dictionary containing task results.
