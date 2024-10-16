@@ -64,7 +64,7 @@ def strings(
     for input_file in input_files:
         output_file = create_output_file(
             output_path,
-            filename=f"{input_file.get("display_name")}.ascii_strings",
+            display_name=f"{input_file.get("display_name")}.ascii_strings",
         )
         command = base_command + [input_file.get("path")]
 
