@@ -16,12 +16,8 @@ import subprocess
 import time
 from datetime import datetime
 
-from openrelik_worker_common.utils import (
-    count_lines_in_file,
-    create_output_file,
-    get_input_files,
-    task_result,
-)
+from openrelik_worker_common.file_utils import create_output_file, count_file_lines
+from openrelik_worker_common.task_utils import create_task_result, get_input_files
 
 from .app import celery
 
@@ -74,7 +70,7 @@ def strings(
             update_interval_s = 3
 
             while process.poll() is None:
-                extracted_strings = count_lines_in_file(output_file.path)
+                extracted_strings = count_file_lines(output_file.path)
                 duration = datetime.now() - start_time
                 rate = (
                     int(extracted_strings / duration.total_seconds())
@@ -92,7 +88,7 @@ def strings(
     if not output_files:
         raise RuntimeError("No strings extracted from the provided files.")
 
-    return task_result(
+    return create_task_result(
         output_files=output_files,
         workflow_id=workflow_id,
         command=base_command_string,
