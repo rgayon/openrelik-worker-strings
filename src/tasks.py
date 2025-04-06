@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime
 import enum
 import subprocess
 import time
+from datetime import datetime
 
 from openrelik_worker_common.file_utils import count_file_lines, create_output_file
 from openrelik_worker_common.task_utils import create_task_result, get_input_files
@@ -29,8 +29,8 @@ from .app import celery
 # b = 16-bit bigendian, l = 16-bit littleendian, B = 32-bit bigendian,
 # L = 32-bit littleendian.
 class StringsEncoding(enum.StrEnum):
-  ASCII = "s"
-  UTF16LE = "l"
+    ASCII = "s"
+    UTF16LE = "l"
 
 
 # Task name used to register and route the task to the correct queue.
@@ -72,71 +72,67 @@ def strings(
     workflow_id: str = None,
     task_config: dict = None,
 ) -> str:
-  """Extract ASCII strings from files.
+    """Extract ASCII strings from files.
 
-  Args:
-      pipe_result: Base64-encoded result from the previous Celery task, if any.
-      input_files: List of input file dictionaries (unused if pipe_result
-        exists).
-      output_path: Path to the output directory.
-      workflow_id: ID of the workflow.
-      task_config: User configuration for the task.
+    Args:
+        pipe_result: Base64-encoded result from the previous Celery task, if any.
+        input_files: List of input file dictionaries (unused if pipe_result
+          exists).
+        output_path: Path to the output directory.
+        workflow_id: ID of the workflow.
+        task_config: User configuration for the task.
 
-  Returns:
-      Base64-encoded dictionary containing task results.
-  """
-  input_files = get_input_files(pipe_result, input_files or [])
-  output_files = []
+    Returns:
+        Base64-encoded dictionary containing task results.
+    """
+    input_files = get_input_files(pipe_result, input_files or [])
+    output_files = []
 
-  for encoding_name, encoding_enabled in task_config.items():
-    # encoding is in the form ('name', value), where value is None, or True
+    for encoding_name in task_config.items():
+        if encoding_name not in StringsEncoding.__members__:
+            raise RuntimeError(f"{encoding_name} is not a valid StringsEncoding name")
 
-    if not encoding_name in StringsEncoding.__members__:
-      raise RuntimeError(f"{encoding_name} is not a valid StringsEncoding name")
+        for input_file in input_files:
+            encoding_object = StringsEncoding[encoding_name]
+            output_file = create_output_file(
+                output_path,
+                display_name=(f"{input_file.get('display_name')}.{encoding_name}_strings"),
+            )
+            command = [
+                "strings",
+                "-a",
+                "-t",
+                "d",
+                "--encoding",
+                encoding_object.value,
+                input_file.get("path"),
+            ]
 
-    for input_file in input_files:
-      encoding_object = StringsEncoding[encoding_name]
-      output_file = create_output_file(
-          output_path,
-          display_name=(
-              f"{input_file.get("display_name")}.{encoding_name}_strings"
-          ),
-      )
-      command = [
-          "strings",
-          "-a",
-          "-t",
-          "d",
-          "--encoding",
-          encoding_object.value,
-          input_file.get("path"),
-      ]
+            with open(output_file.path, "w") as fh:
+                process = subprocess.Popen(command, stdout=fh)
+                start_time = datetime.now()
+                update_interval_s = 3
 
-      with open(output_file.path, "w") as fh:
-        process = subprocess.Popen(command, stdout=fh)
-        start_time = datetime.now()
-        update_interval_s = 3
+                while process.poll() is None:
+                    extracted_strings = count_file_lines(output_file.path)
+                    duration = datetime.now() - start_time
+                    rate = (
+                        int(extracted_strings / duration.total_seconds())
+                        if duration.total_seconds() > 0
+                        else 0
+                    )
+                    self.send_event(
+                        "task-progress",
+                        data={"extracted_strings": extracted_strings, "rate": rate},
+                    )
+                    time.sleep(update_interval_s)
+            output_files.append(output_file.to_dict())
 
-        while process.poll() is None:
-          extracted_strings = count_file_lines(output_file.path)
-          duration = datetime.now() - start_time
-          rate = (
-              int(extracted_strings / duration.total_seconds())
-              if duration.total_seconds() > 0
-              else 0
-          )
-          self.send_event(
-              "task-progress",
-              data={"extracted_strings": extracted_strings, "rate": rate},
-          )
-          time.sleep(update_interval_s)
-      output_files.append(output_file.to_dict())
+    if not output_files:
+        raise RuntimeError("No strings extracted from the provided files.")
 
-  if not output_files:
-    raise RuntimeError("No strings extracted from the provided files.")
-
-  return create_task_result(
-      output_files=output_files,
-      workflow_id=workflow_id,
-      meta={},
-  )
+    return create_task_result(
+        output_files=output_files,
+        workflow_id=workflow_id,
+        meta={},
+    )
