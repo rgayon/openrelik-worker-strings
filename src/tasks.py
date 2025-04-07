@@ -88,7 +88,7 @@ def strings(
     input_files = get_input_files(pipe_result, input_files or [])
     output_files = []
 
-    for encoding_name in task_config.items():
+    for encoding_name, unused_encoding_enabled in task_config.items():
         if encoding_name not in StringsEncoding.__members__:
             raise RuntimeError(f"{encoding_name} is not a valid StringsEncoding name")
 

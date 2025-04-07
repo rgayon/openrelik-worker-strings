@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openrelik-worker-strings"
-version = "0.2.0"
+version = "0.2.1"
 description = "Extract strings from files"
 authors = ["Johan Berggren <jberggren@gmail.com>"]
 license = "Apache 2.0"
@@ -10,7 +10,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.10"
 celery = { extras = ["redis"], version = "^5.4.0" }
-openrelik-worker-common = "^0.11.0"
+openrelik-worker-common = "^0.12.0"
 
 [build-system]
 requires = ["poetry-core"]
