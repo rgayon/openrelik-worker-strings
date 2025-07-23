@@ -10,7 +10,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.11"
 celery = { extras = ["redis"], version = "^5.4.0" }
-openrelik-common = { git = "https://github.com/openrelik/openrelik-common.git" }
+openrelik-common = { git = "https://github.com/rgayon/openrelik-common.git", branch = "otel-init2"}
 openrelik-worker-common = "^0.12.0"
 opentelemetry-instrumentation-celery = "^0.53b1"
 opentelemetry-exporter-otlp = "1.32.1"
