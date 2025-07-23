@@ -13,18 +13,16 @@
 # limitations under the License.
 
 import enum
+import json
 import subprocess
 import time
 from datetime import datetime
 
+from opentelemetry import trace
 from openrelik_worker_common.file_utils import count_file_lines, create_output_file
 from openrelik_worker_common.task_utils import create_task_result, get_input_files
 
-from .app import celery_app
-from celery import signals
-from celery.signals import worker_process_init
-
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from .app import celery
 
 
 # This ENum is to store encoding names, with their corresponding strings
@@ -67,8 +65,7 @@ TASK_METADATA = {
 }
 
 
-
-@celery_app.task(bind=True, name=TASK_NAME, metadata=TASK_METADATA)
+@celery.task(bind=True, name=TASK_NAME, metadata=TASK_METADATA)
 def strings(
     self,
     pipe_result: str = None,
@@ -93,8 +90,12 @@ def strings(
     input_files = get_input_files(pipe_result, input_files or [])
     output_files = []
 
-    traceparent = self.request.headers.get('traceparent')
-    print(f"Worker received task. Traceparent header: {traceparent}")
+    otel_span = trace.get_current_span()
+    tracing_activated = (otel_span != trace.span.INVALID_SPAN)
+
+    if tracing_activated:
+      otel_span.set_attribute("input_files", json.dumps(input_files))
+      otel_span.set_attribute("task_config", json.dumps(task_config))
 
     for encoding_name, unused_encoding_enabled in task_config.items():
         if encoding_name not in StringsEncoding.__members__:
@@ -115,6 +116,9 @@ def strings(
                 encoding_object.value,
                 input_file.get("path"),
             ]
+
+            if tracing_activated:
+              otel_span.set_attribute('generated_command', json.dumps(command))
 
             with open(output_file.path, "w") as fh:
                 process = subprocess.Popen(command, stdout=fh)
