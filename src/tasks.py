@@ -18,7 +18,7 @@ import subprocess
 import time
 from datetime import datetime
 
-from opentelemetry import trace
+from openrelik_common import telemetry
 from openrelik_worker_common.file_utils import count_file_lines, create_output_file
 from openrelik_worker_common.task_utils import create_task_result, get_input_files
 
@@ -90,12 +90,8 @@ def strings(
     input_files = get_input_files(pipe_result, input_files or [])
     output_files = []
 
-    otel_span = trace.get_current_span()
-    tracing_activated = (otel_span != trace.span.INVALID_SPAN)
-
-    if tracing_activated:
-      otel_span.set_attribute("input_files", json.dumps(input_files))
-      otel_span.set_attribute("task_config", json.dumps(task_config))
+    telemetry.add_attribute_to_current_span("input_files", input_files)
+    telemetry.add_attribute_to_current_span("task_config", task_config)
 
     for encoding_name, unused_encoding_enabled in task_config.items():
         if encoding_name not in StringsEncoding.__members__:
@@ -117,8 +113,7 @@ def strings(
                 input_file.get("path"),
             ]
  
-            if tracing_activated:
-              otel_span.set_attribute('generated_command', json.dumps(command))
+            telemetry.add_attribute_to_current_span('generated_command', command)
 
 
             with open(output_file.path, "w") as fh:
