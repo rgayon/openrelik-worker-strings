@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import enum
-import json
 import subprocess
 import time
 from datetime import datetime
