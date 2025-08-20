@@ -17,6 +17,7 @@ import subprocess
 import time
 from datetime import datetime
 
+from openrelik_common import telemetry
 from openrelik_worker_common.file_utils import count_file_lines, create_output_file
 from openrelik_worker_common.task_utils import create_task_result, get_input_files
 
@@ -88,6 +89,9 @@ def strings(
     input_files = get_input_files(pipe_result, input_files or [])
     output_files = []
 
+    telemetry.add_attribute_to_current_span("input_files", input_files)
+    telemetry.add_attribute_to_current_span("task_config", task_config)
+
     for encoding_name, unused_encoding_enabled in task_config.items():
         if encoding_name not in StringsEncoding.__members__:
             raise RuntimeError(f"{encoding_name} is not a valid StringsEncoding name")
@@ -107,6 +111,9 @@ def strings(
                 encoding_object.value,
                 input_file.get("path"),
             ]
+ 
+            telemetry.add_attribute_to_current_span('generated_command', command)
+
 
             with open(output_file.path, "w") as fh:
                 process = subprocess.Popen(command, stdout=fh)
